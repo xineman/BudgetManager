@@ -1,0 +1,19 @@
+<tabs>
+    <tab
+        id="@+id/tab_accounts"
+        title="Accounts"
+        icon="@drawable/ic_credit_card_black_24dp"/>
+    <tab
+        id="@+id/tab_budget"
+        title="Budget"
+        icon="@drawable/ic_description_black_24dp" />
+    <tab
+        id="@+id/tab_charts"
+        title="Charts"
+        icon="@drawable/ic_timeline_black_24dp" />
+    <tab
+        id="@+id/tab_settings"
+        title="Settings"
+        icon="@drawable/ic_settings_black_24dp" />
+
+</tabs>
