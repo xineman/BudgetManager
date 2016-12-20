@@ -3,31 +3,43 @@ package layout;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import nf.co.xine.budgetmanager.R;
+import nf.co.xine.budgetmanager.adapters.BudgetAdapter;
+import nf.co.xine.budgetmanager.dataObjects.Budget;
+import nf.co.xine.budgetmanager.dataObjects.Transaction;
+import ua.privatbank.framework.api.Message;
+import ua.privatbank.payoneclicklib.Api;
+import ua.privatbank.payoneclicklib.Pay;
 
-
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link BudgetFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * Use the {@link BudgetFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class BudgetFragment extends Fragment {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    //private TextView mTransaction;
+    private ListView budgetList;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+    private boolean budgetEditMode = false;
+    private BudgetAdapter budgetAdapter;
+    private ArrayList<Transaction> transactions;
 
     private BudgetFragListener mListener;
 
@@ -35,14 +47,6 @@ public class BudgetFragment extends Fragment {
         // Required empty public constructor
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment BudgetFragment.
-     */
     // TODO: Rename and change types and number of parameters
     public static BudgetFragment newInstance() {
         BudgetFragment fragment = new BudgetFragment();
@@ -54,11 +58,61 @@ public class BudgetFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+
         }
+
     }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.budget_menu, menu);
+    }
+
+    /*private void privatGet() {
+        String uuid = "5ec33f90-a471-11e2-9e96-0800200c9a65";
+
+        Pay mPay = new Pay(getActivity(), new Api.ApiEventListener<ua.privatbank.payoneclicklib.Api>() {
+            @Override
+            public void onApiStartRequest() {
+                //mTransaction.setText("начало");
+                // ваш код обработки начала отправки очереди запросов
+            }
+
+            @Override
+            public void onApiFinishRequest() {
+                //mTransaction.setText("конец");
+                Log.d("Request", "finished");
+                // ваш код обработки завершения отправки очереди запросов
+            }
+
+            @Override
+            public void onApiError(ua.privatbank.payoneclicklib.Api api, Message.ErrorCode code) {
+                //mTransaction.setText(api.getLastServerFailCode() + " " + code);
+                // ваш код обработки ошибок которые приходят от сервера (список есть ниже)
+                // код ошибки нужно получать этим методом: api.getLastServerFailCode()
+                //Log.d("Error", api.getLastServerFailCode());
+            }
+        }, uuid, "104112");
+
+        mPay.getHistory(new Pay.GetHistoryCallBack() {
+            @Override
+            public void onGetHistorySuccess(List<ua.privatbank.payoneclicklib.model.Transaction> transactionList) {
+                //  код обработки полученного списка транзакций
+                mTransaction.setText("получили список" + transactionList.toString());
+            }
+
+            @Override
+            public void onGetHistoryFailed() {
+                // ваш код обработки ошибок при получении списка транзакций
+                mTransaction.setText("история транзакций отсутствует");
+            }
+        });
+
+        mPay.destroy();
+    }*/
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -67,6 +121,16 @@ public class BudgetFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_budget, container, false);
     }
 
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        transactions = mListener.getTransactionList();
+        budgetList = (ListView) getView().findViewById(R.id.budget_list);
+        //mTransaction = (TextView) getView().findViewById(R.id.transactions_list);
+        budgetAdapter = new BudgetAdapter(getActivity(), mListener.getBudgetList(), mListener.getTransactionList(), mListener.getCategories());
+        budgetAdapter.addAll(mListener.getBudgetList());
+        budgetList.setAdapter(budgetAdapter);
+    }
 
     @Override
     public void onAttach(Context context) {
@@ -85,17 +149,30 @@ public class BudgetFragment extends Fragment {
         mListener = null;
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
+    public void toggleEditing(boolean editMode) {
+        budgetEditMode = editMode;
+        if (editMode) {
+            budgetAdapter = new BudgetAdapter(getActivity(), mListener.getBudgetList(), mListener.getTransactionList(), mListener.getCategories());
+            budgetList.setOnItemClickListener(null);
+        } else {
+            budgetAdapter = new BudgetAdapter(getActivity(), mListener.getBudgetList(), mListener.getTransactionList(), mListener.getCategories());
+            budgetList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    //mListener.showAccountTransactions(position);
+                    Log.d("Listener", "position is " + position);
+                }
+            });
+        }
+        budgetAdapter.addAll(mListener.getBudgetList());
+        budgetList.setAdapter(budgetAdapter);
+    }
+
     public interface BudgetFragListener {
-        // TODO: Update argument type and name
+        ArrayList<Transaction> getTransactionList();
+
+        ArrayList<Budget> getBudgetList();
+
+        ArrayList<String> getCategories();
     }
 }

@@ -2,12 +2,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="layout.AccountsFragment">
+    tools:context="layout.SettingsFragment">
 
     <ListView
-        android:id="@+id/budget_list"
+        android:id="@+id/settings_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_margin="16dp"/>
+        android:layout_height="match_parent">
+
+    </ListView>
+
 
 </LinearLayout>

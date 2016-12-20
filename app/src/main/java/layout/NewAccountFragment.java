@@ -13,20 +13,26 @@ import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.Spinner;
+
+import java.util.ArrayList;
 
 import nf.co.xine.budgetmanager.R;
 import nf.co.xine.budgetmanager.dataObjects.Account;
+import nf.co.xine.budgetmanager.dataObjects.Setting;
 
 
 public class NewAccountFragment extends Fragment {
 
     private OnNewAccountListener mListener;
     private EditText name;
-    private EditText type;
+    private Spinner type;
     private EditText value;
     private EditText currency;
     private int accountId;
+    private ArrayList<String> typeList;
 
     public NewAccountFragment() {
         // Required empty public constructor
@@ -59,13 +65,21 @@ public class NewAccountFragment extends Fragment {
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        typeList = mListener.getTypeList();
         name = (EditText) getView().findViewById(R.id.new_account_name);
-        type = (EditText) getView().findViewById(R.id.new_account_type);
+        type = (Spinner) getView().findViewById(R.id.new_account_type);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), R.layout.spinner_layout, typeList);
+// Specify the layout to use when the list of choices appears
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+// Apply the adapter to the spinner
+        type.setAdapter(adapter);
+        //type.setAdapter(new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item, typeList));
         value = (EditText) getView().findViewById(R.id.new_account_value);
         currency = (EditText) getView().findViewById(R.id.new_account_currency);
         if (accountId != -1) {
             name.setText(mListener.getAccount(accountId).getName());
-            type.setText(mListener.getAccount(accountId).getType());
+            type.setSelection(mListener.getAccount(accountId).getType());
             value.setText(String.valueOf(mListener.getAccount(accountId).getStartValue()));
             currency.setText(mListener.getAccount(accountId).getCurrency());
         }
@@ -96,7 +110,11 @@ public class NewAccountFragment extends Fragment {
     }
 
     public Account getNewAccount() {
-        return new Account(name.getText().toString(), type.getText().toString(), Double.parseDouble(value.getText().toString()), currency.getText().toString());
+        try {
+            return new Account(name.getText().toString(), type.getSelectedItemPosition(), Double.parseDouble(value.getText().toString()), currency.getText().toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     /**
@@ -111,5 +129,7 @@ public class NewAccountFragment extends Fragment {
      */
     public interface OnNewAccountListener {
         Account getAccount(int id);
+
+        ArrayList<String> getTypeList();
     }
 }

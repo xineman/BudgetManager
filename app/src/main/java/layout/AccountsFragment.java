@@ -54,6 +54,7 @@ public class AccountsFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
         if (getView() != null) {
             accountsView = (ListView) getView().findViewById(R.id.accounts_list);
+            Log.d("AccountsActivityCreated", "run");
         }
     }
 
@@ -68,9 +69,14 @@ public class AccountsFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         if (mListener.isEditMode())
             inflater.inflate(R.menu.edit_accounts_menu, menu);
-        else
+        else {
             inflater.inflate(R.menu.main_menu, menu);
-        Log.d("Menu", "inflated");
+            if (mListener.getAccounts().size() == 0) {
+                menu.findItem(R.id.new_transaction).setEnabled(false);
+                // TODO: 14.12.2016 create new account if no one is present
+            }
+        }
+        Log.d("AccountsMenu", "inflated");
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -81,6 +87,13 @@ public class AccountsFragment extends Fragment {
         }
         return super.onOptionsItemSelected(item);
     }*/
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (accountsList != null)
+            toggleEditing(false);
+    }
 
     @Override
     public void onAttach(Context context) {
@@ -102,10 +115,10 @@ public class AccountsFragment extends Fragment {
 
     public void toggleEditing(boolean editMode) {
         if (editMode) {
-            accountAdapter = new AccountAdapter(getActivity(), accountsList, AccountAdapter.EDIT);
+            accountAdapter = new AccountAdapter(getActivity(), accountsList, mListener.getTypeList(), AccountAdapter.EDIT);
             accountsView.setOnItemClickListener(null);
         } else {
-            accountAdapter = new AccountAdapter(getActivity(), accountsList, AccountAdapter.BROWSE);
+            accountAdapter = new AccountAdapter(getActivity(), accountsList, mListener.getTypeList(), AccountAdapter.BROWSE);
             accountsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -119,14 +132,18 @@ public class AccountsFragment extends Fragment {
     }
 
     public void setAccountsList(ArrayList<Account> accounts) {
-        accountsList = accounts;
-        toggleEditing(mListener.isEditMode());
+        if (accounts != null && isAdded()) {
+            accountsList = accounts;
+            toggleEditing(mListener.isEditMode());
+        }
     }
 
     public interface AccountsFragListener {
         boolean isEditMode();
 
         ArrayList<Account> getAccounts();
+
+        ArrayList<String> getTypeList();
 
         void showAccountTransactions(int position);
     }

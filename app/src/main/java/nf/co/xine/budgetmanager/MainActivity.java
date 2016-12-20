@@ -1,6 +1,8 @@
 package nf.co.xine.budgetmanager;
 
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
@@ -8,6 +10,7 @@ import android.support.annotation.IdRes;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -15,6 +18,8 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
 import com.roughike.bottombar.BottomBar;
 import com.roughike.bottombar.OnTabSelectListener;
@@ -26,29 +31,56 @@ import java.util.Locale;
 
 import layout.AccountsFragment;
 import layout.BudgetFragment;
+import layout.CategoriesFragment;
 import layout.NewAccountFragment;
+import layout.NewBudgetSetupFragment;
 import layout.NewTransactionFragment;
+import layout.SettingsFragment;
 import layout.TransactionsFragment;
 import nf.co.xine.budgetmanager.dataObjects.Account;
+import nf.co.xine.budgetmanager.dataObjects.Budget;
 import nf.co.xine.budgetmanager.dataObjects.Transaction;
 
 public class MainActivity extends AppCompatActivity implements AccountsFragment.AccountsFragListener,
-        BudgetFragment.BudgetFragListener, NewAccountFragment.OnNewAccountListener, TransactionsFragment.TransactionFragListener, NewTransactionFragment.NewTransactionListener {
+        BudgetFragment.BudgetFragListener, NewAccountFragment.OnNewAccountListener, TransactionsFragment.TransactionFragListener,
+        NewTransactionFragment.NewTransactionListener, SettingsFragment.OnSettingsListener, CategoriesFragment.OnCategoriesListener,
+        NewBudgetSetupFragment.OnNewBudgetListener {
 
-    private ArrayList<Account> accountList = new ArrayList<Account>();
+    private ArrayList<Account> accountList;
+    private ArrayList<String> typeList;
     private ArrayList<Transaction> transactionList = new ArrayList<>();
     private ArrayList<String> categoryList = new ArrayList<>();
+    private ArrayList<Budget> budgetList;
     private boolean editMode = false;
     private Fragment currentFragment;
+    private BudgetFragment budgetFragment;
+    private int currentTabIndex;
     private NewAccountFragment newAccountFragment;
     private NewTransactionFragment newTransactionFragment;
+    private CategoriesFragment categoriesFragment;
     private int currentAccount;
     private int transactionToEdit = -1;
     private int accountToEdit = -1;//account to edit, -1 if creating new account
-    public final static SimpleDateFormat DATE_TIME_FORMAT =
+    public static final SimpleDateFormat DATE_TIME_FORMAT =
             new SimpleDateFormat("EEE, d MMM yyyy @ HH:mm:ss", Locale.getDefault());
-    public final static SimpleDateFormat DATE_FORMAT =
+    public static final SimpleDateFormat DATE_FORMAT =
             new SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault());
+
+    private SharedPreferences sharedPref;
+
+
+    private int defaultAccount;
+    private String privatAccount;
+
+    private Context getContext() {
+        return this;
+    }
+
+    private void fillBudgetConst() {
+        budgetList = new ArrayList<>();
+        budgetList.add(new Budget(0, 200, 0));
+        budgetList.add(new Budget(1, 250, 0));
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,53 +90,86 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         setSupportActionBar(myToolbar);
         getSupportActionBar().setTitle("Accounts");
         new GetAccountsFromDb().execute(this);
-        //fillRandomly();
+        sharedPref = getPreferences(Context.MODE_PRIVATE);
         currentFragment = AccountsFragment.newInstance();
+        fillBudgetConst();
         BottomBar bottomBar = (BottomBar) findViewById(R.id.bottomBar);
         bottomBar.setOnTabSelectListener(new OnTabSelectListener() {
             @Override
             public void onTabSelected(@IdRes int tabId) {
                 if (tabId == R.id.tab_accounts) {
-                    Log.d("accountsList size", String.valueOf(accountList.size()));
-                    FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-                    transaction.replace(R.id.frag_container, currentFragment).commit();
-                    Log.d("Frag", "Accounts");
+                    currentTabIndex = 0;
+                    defaultAccount = sharedPref.getInt(getString(R.string.default_account), -1);
+                    getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, currentFragment).commit();
+                    setBarTitle();
+                    //setBarTitle();
                 }
                 if (tabId == R.id.tab_budget) {
-                    //currentFragment = BudgetFragment.newInstance();
-                    getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, currentFragment).commit();
+                    currentTabIndex = 1;
+                    budgetFragment = BudgetFragment.newInstance();
+                    getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, budgetFragment).commit();
                     Log.d("Frag", "Budget");
                 }
                 if (tabId == R.id.tab_charts) {
+                    currentTabIndex = 2;
 
+                }
+                if (tabId == R.id.tab_settings) {
+                    currentTabIndex = 3;
+                    getSupportActionBar().setTitle("Settings");
+                    getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, SettingsFragment.newInstance()).commit();
                 }
             }
         });
         getSupportFragmentManager().addOnBackStackChangedListener(
                 new FragmentManager.OnBackStackChangedListener() {
                     public void onBackStackChanged() {
-                        currentFragment = getSupportFragmentManager().findFragmentById(R.id.frag_container);
-                        if (currentFragment instanceof AccountsFragment) {
-                            getSupportActionBar().setTitle("Accounts");
-                            ((AccountsFragment) currentFragment).setAccountsList(accountList);
-                            currentAccount = -1;
+                        switch (currentTabIndex) {
+                            case 0: {
+                                currentFragment = getSupportFragmentManager().findFragmentById(R.id.frag_container);
+                                break;
+                            }
+                            case 1: {
+                                break;
+                            }
+                            case 2: {
+                                break;
+                            }
+                            case 3: {
+                                break;
+                            }
                         }
-                        if (currentFragment instanceof TransactionsFragment)
-                            getSupportActionBar().setTitle(accountList.get(currentAccount).getName());
-                        if (currentFragment instanceof NewAccountFragment) {
-                            if (accountToEdit == -1)
-                                getSupportActionBar().setTitle("New account");
-                            else
-                                getSupportActionBar().setTitle("Edit account");
-                        }
-                        if (currentFragment instanceof NewTransactionFragment) {
-                            if (transactionToEdit == -1)
-                                getSupportActionBar().setTitle("New transaction");
-                            else
-                                getSupportActionBar().setTitle("Edit transaction");
-                        }
+
+                        setBarTitle();
                     }
                 });
+    }
+
+    private void setBarTitle() {
+        switch (currentTabIndex) {
+            case 0: {
+                if (currentFragment instanceof AccountsFragment) {
+                    getSupportActionBar().setTitle("Accounts");
+                    ((AccountsFragment) currentFragment).setAccountsList(accountList);
+                    currentAccount = -1;
+                }
+                if (currentFragment instanceof TransactionsFragment)
+                    getSupportActionBar().setTitle(accountList.get(currentAccount).getName());
+                if (currentFragment instanceof NewAccountFragment) {
+                    if (accountToEdit == -1)
+                        getSupportActionBar().setTitle("New account");
+                    else
+                        getSupportActionBar().setTitle("Edit account");
+                }
+                if (currentFragment instanceof NewTransactionFragment) {
+                    if (transactionToEdit == -1)
+                        getSupportActionBar().setTitle("New transaction");
+                    else
+                        getSupportActionBar().setTitle("Edit transaction");
+                }
+                break;
+            }
+        }
     }
 
     @Override
@@ -133,22 +198,46 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
             Log.d("Frag", "Replaced");
         }
         if (item.getItemId() == R.id.add_account_option) {
-            if (accountToEdit != -1) {//if existing account was edited
-                Account last = accountList.get(accountToEdit);
-                accountList.set(accountToEdit, newAccountFragment.getNewAccount());
-                accountList.get(accountToEdit).addToValue(last.getValue());
-                accountList.get(accountToEdit).addToValue(last.getStartValue() * -1);
-                accountToEdit = -1;
-            } else
-                accountList.add(0, newAccountFragment.getNewAccount());
-            if (currentFragment instanceof AccountsFragment) {
-                currentFragment = AccountsFragment.newInstance();
-            }
-            getSupportFragmentManager().popBackStack();
-            View view = this.getCurrentFocus();
-            if (view != null) {
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            Account createdAccount = newAccountFragment.getNewAccount();
+            if (createdAccount == null || createdAccount.getCurrency().equals("") || createdAccount.getName().equals("")) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("You have to fill all the fields!");
+                builder.setPositiveButton("OK", null);
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        getSupportFragmentManager().popBackStack();
+                        View view = getWindow().getCurrentFocus();
+                        if (view != null) {
+                            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                        }
+                    }
+                });
+                builder.create().show();
+            } else {
+                if (accountToEdit != -1) {//if existing account was edited
+                    Account last = accountList.get(accountToEdit);
+                    accountList.set(accountToEdit, createdAccount);
+                    accountList.get(accountToEdit).addToValue(last.getValue());
+                    accountList.get(accountToEdit).addToValue(last.getStartValue() * -1);
+                    accountToEdit = -1;
+                } else {
+                    SharedPreferences.Editor editor = sharedPref.edit();
+                    editor.putInt(getString(R.string.default_account), ++defaultAccount);
+                    editor.apply();
+                    accountList.add(0, newAccountFragment.getNewAccount());
+                }
+                if (currentFragment instanceof AccountsFragment) {
+                    currentFragment = AccountsFragment.newInstance();
+                }
+                new SaveAccountsToDb().execute(this);
+                getSupportFragmentManager().popBackStack();
+                View view = this.getCurrentFocus();
+                if (view != null) {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
             }
         }
         if (item.getItemId() == R.id.add_transaction_option) {
@@ -172,6 +261,22 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
             }
+        }
+        if (item.getItemId() == R.id.done_editing_categories) {
+            new SaveCategoriesToDb().execute(this);
+            getSupportFragmentManager().popBackStack();
+        }
+        if (item.getItemId() == R.id.new_category) {
+            newCategory();
+            //getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, categoriesFragment).commit();
+
+            Log.d("Frag", "Replaced");
+        }
+        if (item.getItemId() == R.id.new_budget) {
+            getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, new NewBudgetSetupFragment()).addToBackStack(null).commit();
+        }
+        if (item.getItemId() == R.id.add_budget_option) {
+            getSupportFragmentManager().popBackStack();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -199,11 +304,95 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newAccountFragment).addToBackStack(null).commit();
     }
 
+    public String getPrivatAccount() {
+        return privatAccount;
+    }
 
-    private void fillRandomly() {
-        for (int i = 0; i < 7; i++) {
-            accountList.add(new Account("Visa Gold " + i, "Credit Card", 7000, "USD"));
+    public void setPrivatAccount(String privatAccount) {
+        this.privatAccount = privatAccount;
+    }
+
+    public int getDefaultAccount() {
+        return defaultAccount;
+    }
+
+    public void setDefaultAccount(int defaultAccount) {
+        this.defaultAccount = defaultAccount;
+    }
+
+    @Override
+    public void editCategories() {
+        categoriesFragment = new CategoriesFragment();
+        getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, categoriesFragment).addToBackStack(null).commit();
+    }
+
+    public int getTransactionCount(int position) {
+        int transactionsCount = 0;
+        for (Transaction tr :
+                transactionList) {
+            if (tr.getCategory() == position) {
+                transactionsCount++;
+            }
         }
+        return transactionsCount;
+    }
+
+    public void newCategory() {
+        final EditText input = new EditText(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(10, 0, 10, 0);
+        input.setHint("Category name");
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Create new");
+        builder.setView(input);
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                categoryList.add(input.getText().toString());
+                categoriesFragment.invalidate();
+                new SaveCategoriesToDb().execute(getContext());
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+            }
+        });
+        builder.create().show();
+    }
+
+    public void editCategory(final int position) {
+        final EditText input = new EditText(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(10, 0, 10, 0);
+        input.setText(categoryList.get(position));
+        input.setHint("Category name");
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Rename");
+        builder.setView(input);
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                categoryList.set(position, input.getText().toString());
+                new SaveCategoriesToDb().execute(getContext());
+                categoriesFragment.invalidate();
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        builder.create().show();
+
+        // TODO: 14.12.2016 Edit category there!
     }
 
     //DataBase work
@@ -213,16 +402,22 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         protected Context doInBackground(Context... params) {
             try {
                 accountList = new ArrayList<>();
+                typeList = new ArrayList<>();
                 DbHelper helper = new DbHelper(params[0]);
                 SQLiteDatabase db = helper.getWritableDatabase();
                 Cursor cursor = db.query("ACCOUNTS", new String[]{"NAME", "TYPE", "VALUE", "CURRENCY"}, null, null, null, null, null);
                 while (cursor.moveToNext()) {
-                    accountList.add(new Account(cursor.getString(0), cursor.getString(1), Double.parseDouble(cursor.getString(2)), cursor.getString(3)));
+                    accountList.add(new Account(cursor.getString(0), cursor.getInt(1), Double.parseDouble(cursor.getString(2)), cursor.getString(3)));
+                }
+                cursor = db.query("ACCOUNT_TYPES", new String[]{"NAME"}, null, null, null, null, null);
+                while (cursor.moveToNext()) {
+                    typeList.add(cursor.getString(0));
                 }
                 cursor.close();
                 db.close();
             } catch (Exception e) {
                 e.printStackTrace();
+
             }
             Log.d("Accounts", "retrieved from db");
             return params[0];
@@ -309,7 +504,7 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         }
     }
 
-    private class SaveTransactionsToDb extends AsyncTask<Context, Void, Void> {
+    public class SaveTransactionsToDb extends AsyncTask<Context, Void, Void> {
 
         @Override
         protected Void doInBackground(Context... params) {
@@ -321,7 +516,27 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                     DbHelper.insertTransaction(db, transactionList.get(i).getAccountId(), transactionList.get(i).getCategory(), transactionList.get(i).getName(), DATE_TIME_FORMAT.format(transactionList.get(i).getDate()), String.valueOf(transactionList.get(i).getValue()));
                 }
                 db.close();
-                Log.d("Main act", "Successfully inserted!!!");
+                Log.d("Main act", "Transactions inserted!!!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    public class SaveCategoriesToDb extends AsyncTask<Context, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Context... params) {
+            try {
+                DbHelper helper = new DbHelper(params[0]);
+                SQLiteDatabase db = helper.getWritableDatabase();
+                db.execSQL("delete from " + "CATEGORIES");
+                for (int i = 0; i < categoryList.size(); i++) {
+                    DbHelper.insertCategory(db, categoryList.get(i));
+                }
+                db.close();
+                Log.d("Main act", "Categories inserted!!!");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -370,9 +585,16 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         return accountList.get(i);
     }
 
+    public ArrayList<String> getTypeList() {
+        return typeList;
+    }
+
     public void removeAccount(int position) {
         //new RemoveFromDb().execute(new RemoveAccountData(accountList.get(position), this, position));
         accountList.remove(position);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putInt(getString(R.string.default_account), --defaultAccount);
+        editor.apply();
         for (Transaction tr :
                 transactionList) {
             if (tr.getAccountId() == position) {
@@ -385,6 +607,12 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                 tr.increaseAccountId(-1);
             }
         }
+        sharedPref = getPreferences(Context.MODE_PRIVATE);
+        if (position == sharedPref.getInt(getString(R.string.default_account), -1)) {
+            editor = sharedPref.edit();
+            editor.putInt(getString(R.string.default_account), 0);
+            editor.apply();
+        }
         new SaveAccountsToDb().execute(this);
         new SaveTransactionsToDb().execute(this);
     }
@@ -395,7 +623,7 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         protected Void doInBackground(RemoveAccountData... params) {
             DbHelper helper = new DbHelper(params[0].getContext());
             helper.getWritableDatabase().delete("TRANSACTIONS", "ACCOUNT_ID=?", new String[]{String.valueOf(params[0].getPosition())});
-            helper.getWritableDatabase().delete("ACCOUNTS", "name=? AND type=?", new String[]{params[0].getAccount().getName(), params[0].getAccount().getType()});
+            helper.getWritableDatabase().delete("ACCOUNTS", "name=? AND type=?", new String[]{params[0].getAccount().getName(), String.valueOf(params[0].getAccount().getType())});
             Log.d("AccountID to remove", String.valueOf(params[0].getPosition()));
             return null;
         }
@@ -440,5 +668,13 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
             if (tr.getAccountId() == id) list.add(tr);
         }
         return list;
+    }
+
+    public ArrayList<Transaction> getTransactionList() {
+        return transactionList;
+    }
+
+    public ArrayList<Budget> getBudgetList() {
+        return budgetList;
     }
 }

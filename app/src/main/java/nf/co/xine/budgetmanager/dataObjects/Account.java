@@ -6,12 +6,12 @@ package nf.co.xine.budgetmanager.dataObjects;
 
 public class Account {
     private String name;
-    private String type;
+    private int type;
     private double value;
     private double startValue;
     private String currency;
 
-    public Account(String name, String type, double startValue, String currency) {
+    public Account(String name, int type, double startValue, String currency) {
         this.name = name;
         this.type = type;
         this.startValue = startValue;
@@ -23,7 +23,7 @@ public class Account {
         return value;
     }
 
-    public String getType() {
+    public int getType() {
         return type;
     }
 

@@ -93,9 +93,16 @@ public class NewTransactionFragment extends Fragment {
         accountsSpinner = (Spinner) getView().findViewById(R.id.accounts_spinner);
         date = (TextView) getView().findViewById(R.id.transaction_date);
         typeRadio = (RadioGroup) getView().findViewById(R.id.radio_type);
-        categoriesSpinner.setAdapter(new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item, mListener.getCategories()));
-        accountsSpinner.setAdapter(new ArrayAdapter<>(getActivity(), android.R.layout.simple_spinner_item, mListener.getAccounts()));
-        accountsSpinner.setSelection(currentAccount);
+        ArrayAdapter categoriesAdapter = new ArrayAdapter<>(getActivity(), R.layout.spinner_layout, mListener.getCategories());
+        categoriesAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categoriesSpinner.setAdapter(categoriesAdapter);
+        ArrayAdapter accountsAdapter = new ArrayAdapter<>(getActivity(), R.layout.spinner_layout, mListener.getAccounts());
+        accountsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        accountsSpinner.setAdapter(accountsAdapter);
+        if (mListener.getDefaultAccount() != -1)
+            accountsSpinner.setSelection(mListener.getDefaultAccount());
+        if (currentAccount != -1)
+            accountsSpinner.setSelection(currentAccount);
         if (transactionId != -1) {
             name.setText(mListener.getTransaction(transactionId).getName());
             value.setText(String.valueOf(Math.abs(mListener.getTransaction(transactionId).getValue())));
@@ -210,6 +217,8 @@ public class NewTransactionFragment extends Fragment {
         ArrayList<Account> getAccounts();
 
         Transaction getTransaction(int position);
+
+        int getDefaultAccount();
 
         void removeTransaction(int position);
     }

@@ -41,4 +41,8 @@ public class Transaction {
     public void increaseAccountId(int value) {
         accountId += value;
     }
+
+    public void setDafaultCategory() {
+        categoryId = 0;
+    }
 }

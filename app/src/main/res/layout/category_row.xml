@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="5dp">
+
+    <TextView
+        android:id="@+id/category_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:textSize="8pt"/>
+
+    <Button
+        style="@style/sidesMargins"
+        android:id="@+id/remove_category_btn"
+        android:layout_width="45dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/category_name"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:drawableLeft="@drawable/ic_delete_black_24dp"
+        android:drawableStart="@drawable/ic_delete_black_24dp"
+        android:gravity="center" />
+
+    <Button
+        style="@style/sidesMargins"
+        android:id="@+id/edit_category_btn"
+        android:layout_width="45dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/category_name"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@id/remove_category_btn"
+        android:layout_toStartOf="@id/remove_category_btn"
+        android:drawableLeft="@drawable/ic_mode_edit_black_24dp"
+        android:drawableStart="@drawable/ic_mode_edit_black_24dp"
+        android:gravity="center" />
+
+
+</RelativeLayout>

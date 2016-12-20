@@ -26,7 +26,6 @@ public class DbHelper extends SQLiteOpenHelper {
                 + "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + "ACCOUNT_ID INTEGER, "
                 + "NAME TEXT, "
-                + "TYPE INTEGER, "
                 + "CATEGORY_ID INTEGER, "
                 + "DATE TEXT, "
                 + "VALUE TEXT, "
@@ -35,8 +34,32 @@ public class DbHelper extends SQLiteOpenHelper {
         db.execSQL("create table CATEGORIES ("
                 + "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + "NAME TEXT)");
-        insertCategory(db, "Zalupa");
-        insertCategory(db, "Profit");
+        db.execSQL("create table ACCOUNT_TYPES ("
+                + "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "NAME TEXT)");
+        db.execSQL("create table BUDGET_SETUPS ("
+                + "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "CATEGORY_ID INTEGER)"
+                + "VALUE TEXT, "
+                + "PERIOD INTEGER, "
+                + "FOREIGN KEY(CATEGORY_ID) REFERENCES CATEGORIES(_id))");
+        insertCategory(db, "Other");
+        insertCategory(db, "Car");
+        insertCategory(db, "Clothing");
+        insertCategory(db, "Eating out");
+        insertCategory(db, "Education");
+        insertCategory(db, "Entertainment");
+        insertCategory(db, "Gifts");
+        insertCategory(db, "Groceries");
+        insertCategory(db, "Insurance");
+        insertCategory(db, "Medical");
+        insertCategory(db, "Transport");
+        insertCategory(db, "Taxes");
+        insertAccountType(db, "Credit Card");
+        insertAccountType(db, "Debit Card");
+        insertAccountType(db, "Deposit");
+        insertAccountType(db, "Cash");
+        insertAccountType(db, "Other");
     }
 
     @Override
@@ -44,13 +67,19 @@ public class DbHelper extends SQLiteOpenHelper {
 
     }
 
-    static void insertAccount(SQLiteDatabase db, String name, String type, String value, String currency) {
+    static void insertAccount(SQLiteDatabase db, String name, int type, String value, String currency) {
         ContentValues values = new ContentValues();
         values.put("NAME", name);
         values.put("TYPE", type);
         values.put("VALUE", value);
         values.put("CURRENCY", currency);
         db.insertWithOnConflict("ACCOUNTS", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private static void insertAccountType(SQLiteDatabase db, String name) {
+        ContentValues values = new ContentValues();
+        values.put("NAME", name);
+        db.insertWithOnConflict("ACCOUNT_TYPES", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     static void insertTransaction(SQLiteDatabase db, int accountId, int categoryId, String name, String date, String value) {
@@ -62,9 +91,18 @@ public class DbHelper extends SQLiteOpenHelper {
         values.put("VALUE", value);
         db.insertWithOnConflict("TRANSACTIONS", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
+
     static void insertCategory(SQLiteDatabase db, String name) {
         ContentValues values = new ContentValues();
         values.put("NAME", name);
         db.insertWithOnConflict("CATEGORIES", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    static void insertBudget(SQLiteDatabase db, int categoryId, String value, int period) {
+        ContentValues values = new ContentValues();
+        values.put("CATEGORY_ID", categoryId);
+        values.put("VALUE", value);
+        values.put("VALUE", period);
+        db.insertWithOnConflict("BUDGET_SETUPS", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 }

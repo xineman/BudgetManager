@@ -26,11 +26,12 @@ import nf.co.xine.budgetmanager.dataObjects.Account;
 import nf.co.xine.budgetmanager.dataObjects.Transaction;
 
 public class AccountAdapter extends ArrayAdapter<Account> {
-    public AccountAdapter(Context context, ArrayList<Account> list, int mode) {
+    public AccountAdapter(Context context, ArrayList<Account> list, ArrayList<String> typeList, int mode) {
         super(context, 0);
         this.mode = mode;
         this.context = context;
         accounts = list;
+        this.typeList = typeList;
     }
 
     private Context context;
@@ -39,6 +40,7 @@ public class AccountAdapter extends ArrayAdapter<Account> {
     public static final int EDITING = 2;
     private int mode;
     private ArrayList<Account> accounts;
+    private ArrayList<String> typeList;
     private int position;
 
     @NonNull
@@ -105,11 +107,12 @@ public class AccountAdapter extends ArrayAdapter<Account> {
                     Log.d("Clicked", String.valueOf(position));
                     AlertDialog.Builder builder = new AlertDialog.Builder(context);
                     builder.setTitle("Are you sure?");
-                    builder.setMessage("Remove account \"" + account.getName() + "\"?");
+                    builder.setMessage("Remove account \"" + account.getName() + "\"? All the transactions will be removed too.");
                     builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            ((MainActivity) context).removeAccount(position);
+                            if (context != null)
+                                ((MainActivity) context).removeAccount(position);
                             remove(account);
                             notifyDataSetChanged();
                         }
@@ -132,7 +135,7 @@ public class AccountAdapter extends ArrayAdapter<Account> {
         }
         // Populate the data into the template view using the data object
         name.setText(account.getName());
-        type.setText(account.getType());
+        type.setText(typeList.get(account.getType()));
         value.setText(String.valueOf(account.getValue()) + " " + account.getCurrency().toUpperCase());
         // Return the completed view to render on screen
         return convertView;
