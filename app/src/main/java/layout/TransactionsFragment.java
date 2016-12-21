@@ -37,14 +37,6 @@ public class TransactionsFragment extends Fragment {
         // Required empty public constructor
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment TransactionsFragment.
-     */
 
     public static TransactionsFragment newInstance(int accountId) {
         TransactionsFragment fragment = new TransactionsFragment();
@@ -81,8 +73,14 @@ public class TransactionsFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
         accountValue = (TextView) getView().findViewById(R.id.account_value);
         transactionsList = (ListView) getView().findViewById(R.id.transaction_list);
-        transactionAdapter = new TransactionAdapter(getActivity(), mListener.getCategories(), mListener.getAccount(accountId).getCurrency());
-        transactions = mListener.getTransactionsForAcc(accountId);
+        if (accountId != -1) {
+            transactions = mListener.getTransactionsForAcc(accountId);
+            transactionAdapter = new TransactionAdapter(getActivity(), mListener.getCategories(), mListener.getAccount(accountId).getCurrency());
+            accountValue.setText(getResources().getString(R.string.total_value) + " " + String.valueOf(mListener.getAccount(accountId).getValue()) + " " + mListener.getAccount(accountId).getCurrency().toUpperCase());
+        } else {
+            transactionAdapter = new TransactionAdapter(getActivity(), mListener.getCategories(), "USD");
+            accountValue.setText("Transaction for period");
+        }
         transactionAdapter.addAll(transactions);
         transactionsList.setAdapter(transactionAdapter);
         transactionsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -91,7 +89,7 @@ public class TransactionsFragment extends Fragment {
                 mListener.editTransaction(position);
             }
         });
-        accountValue.setText(getResources().getString(R.string.total_value) + " " + String.valueOf(mListener.getAccount(accountId).getValue()) + " " + mListener.getAccount(accountId).getCurrency().toUpperCase());
+
     }
 
     @Override
@@ -109,6 +107,10 @@ public class TransactionsFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    public void setTransactions(ArrayList<Transaction> transactions) {
+        this.transactions = transactions;
     }
 
     public void dataSetChanged() {

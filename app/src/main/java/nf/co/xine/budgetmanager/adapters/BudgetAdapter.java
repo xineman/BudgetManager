@@ -2,6 +2,7 @@ package nf.co.xine.budgetmanager.adapters;
 
 
 import android.content.Context;
+import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,11 +10,23 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import com.github.mikephil.charting.charts.HorizontalBarChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
+import nf.co.xine.budgetmanager.PercentFormatter;
 import nf.co.xine.budgetmanager.R;
 import nf.co.xine.budgetmanager.dataObjects.Budget;
 import nf.co.xine.budgetmanager.dataObjects.Transaction;
@@ -41,6 +54,7 @@ public class BudgetAdapter extends ArrayAdapter<Budget> {
             convertView = LayoutInflater.from(getContext()).inflate(R.layout.budget_row, parent, false);
         }
 
+        HorizontalBarChart chart = (HorizontalBarChart) convertView.findViewById(R.id.chart);
 
         TextView category = (TextView) convertView.findViewById(R.id.budget_category);
         TextView period = (TextView) convertView.findViewById(R.id.budget_period);
@@ -75,6 +89,12 @@ public class BudgetAdapter extends ArrayAdapter<Budget> {
                 break;
             }
             case 2: {
+                cal = Calendar.getInstance();
+                cal.set(Calendar.HOUR_OF_DAY, 0); // ! clear would not reset the hour of day !
+                cal.clear(Calendar.MINUTE);
+                cal.clear(Calendar.SECOND);
+                cal.clear(Calendar.MILLISECOND);
+                cal.set(Calendar.DAY_OF_YEAR, 1);
                 break;
             }
         }
@@ -84,6 +104,34 @@ public class BudgetAdapter extends ArrayAdapter<Budget> {
                 total += tr.getValue() * -1;
         }
         currentValue.setText(String.valueOf(total));
+        BigDecimal number = new BigDecimal(total / getItem(position).getValue()*100);
+        float budgetProgress = number.floatValue();
+        List<BarEntry> entries = new ArrayList<BarEntry>();
+        entries.add(new BarEntry(0f, budgetProgress));
+        BarDataSet set = new BarDataSet(entries, "BarDataSet");
+        BarData data = new BarData(set);
+        data.setBarWidth(10f); // set custom bar width
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setEnabled(false);
+        YAxis right = chart.getAxisRight();
+        right.setEnabled(false);
+        YAxis left = chart.getAxisLeft();
+        left.setAxisMinimum(0f);
+        left.setValueFormatter(new PercentFormatter());
+        Description description = new Description();
+        description.setText("");
+        chart.setDescription(description);
+        set.setColor(Color.RED);
+        if (budgetProgress<100f) {
+            set.setColor(Color.GREEN);
+            left.setAxisMaximum(100f);
+        }
+        chart.setDrawGridBackground(false);
+        Legend legend = chart.getLegend();
+        legend.setEnabled(false);
+        chart.setData(data);
+        chart.setFitBars(true); // make the x-axis fit exactly all bars
+        chart.invalidate();
         return convertView;
     }
 }

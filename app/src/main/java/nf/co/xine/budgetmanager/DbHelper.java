@@ -39,7 +39,7 @@ public class DbHelper extends SQLiteOpenHelper {
                 + "NAME TEXT)");
         db.execSQL("create table BUDGET_SETUPS ("
                 + "_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + "CATEGORY_ID INTEGER)"
+                + "CATEGORY_ID INTEGER, "
                 + "VALUE TEXT, "
                 + "PERIOD INTEGER, "
                 + "FOREIGN KEY(CATEGORY_ID) REFERENCES CATEGORIES(_id))");
@@ -102,7 +102,7 @@ public class DbHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put("CATEGORY_ID", categoryId);
         values.put("VALUE", value);
-        values.put("VALUE", period);
+        values.put("PERIOD", period);
         db.insertWithOnConflict("BUDGET_SETUPS", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 }

@@ -86,20 +86,26 @@ public class SettingsFragment extends Fragment {
                         break;
                     }
                     case 1: {
-                        AlertDialog.Builder b = new AlertDialog.Builder(getActivity());
-                        b.setTitle("Select default account");
-                        b.setAdapter(new ArrayAdapter<>(getActivity(), R.layout.spinner_layout, mListener.getAccounts()), new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                SharedPreferences.Editor editor = sharedPref.edit();
-                                editor.putInt(getString(R.string.default_account), which);
-                                editor.apply();
-                                settingArrayList.set(1, new Setting(settings[1], mListener.getAccounts().get(which).getName()));
-                                settingsAdapter.clear();
-                                settingsAdapter.addAll(settingArrayList);
-                            }
-                        });
-                        b.create().show();
+                        if (mListener.getAccounts().isEmpty()) {
+                            AlertDialog.Builder b = new AlertDialog.Builder(getActivity());
+                            b.setMessage("No accounts!");
+                            b.create().show();
+                        } else {
+                            AlertDialog.Builder b = new AlertDialog.Builder(getActivity());
+                            b.setTitle("Select default account");
+                            b.setAdapter(new ArrayAdapter<>(getActivity(), R.layout.spinner_layout, mListener.getAccounts()), new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    SharedPreferences.Editor editor = sharedPref.edit();
+                                    editor.putInt(getString(R.string.default_account), which);
+                                    editor.apply();
+                                    settingArrayList.set(1, new Setting(settings[1], mListener.getAccounts().get(which).getName()));
+                                    settingsAdapter.clear();
+                                    settingsAdapter.addAll(settingArrayList);
+                                }
+                            });
+                            b.create().show();
+                        }
                         break;
                     }
                     case 2: {

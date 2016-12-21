@@ -72,7 +72,6 @@ public class AccountsFragment extends Fragment {
         else {
             inflater.inflate(R.menu.main_menu, menu);
             if (mListener.getAccounts().size() == 0) {
-                menu.findItem(R.id.new_transaction).setEnabled(false);
                 // TODO: 14.12.2016 create new account if no one is present
             }
         }

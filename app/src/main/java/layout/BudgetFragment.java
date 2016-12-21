@@ -18,6 +18,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import nf.co.xine.budgetmanager.MainActivity;
 import nf.co.xine.budgetmanager.R;
 import nf.co.xine.budgetmanager.adapters.BudgetAdapter;
 import nf.co.xine.budgetmanager.dataObjects.Budget;
@@ -130,6 +131,19 @@ public class BudgetFragment extends Fragment {
         budgetAdapter = new BudgetAdapter(getActivity(), mListener.getBudgetList(), mListener.getTransactionList(), mListener.getCategories());
         budgetAdapter.addAll(mListener.getBudgetList());
         budgetList.setAdapter(budgetAdapter);
+        budgetList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                ((MainActivity) mListener).showBudgetTransactions(position);
+            }
+        });
+        budgetList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                ((MainActivity) mListener).editBudget(position);
+                return false;
+            }
+        });
     }
 
     @Override

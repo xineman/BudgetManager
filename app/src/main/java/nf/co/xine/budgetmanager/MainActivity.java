@@ -27,6 +27,8 @@ import com.roughike.bottombar.OnTabSelectListener;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.IllegalFormatException;
 import java.util.Locale;
 
 import layout.AccountsFragment;
@@ -57,10 +59,12 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
     private int currentTabIndex;
     private NewAccountFragment newAccountFragment;
     private NewTransactionFragment newTransactionFragment;
+    private NewBudgetSetupFragment newBudgetSetupFragment;
     private CategoriesFragment categoriesFragment;
     private int currentAccount;
     private int transactionToEdit = -1;
     private int accountToEdit = -1;//account to edit, -1 if creating new account
+    private int budgetToEdit = -1;
     public static final SimpleDateFormat DATE_TIME_FORMAT =
             new SimpleDateFormat("EEE, d MMM yyyy @ HH:mm:ss", Locale.getDefault());
     public static final SimpleDateFormat DATE_FORMAT =
@@ -76,12 +80,6 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         return this;
     }
 
-    private void fillBudgetConst() {
-        budgetList = new ArrayList<>();
-        budgetList.add(new Budget(0, 200, 0));
-        budgetList.add(new Budget(1, 250, 0));
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -90,9 +88,9 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         setSupportActionBar(myToolbar);
         getSupportActionBar().setTitle("Accounts");
         new GetAccountsFromDb().execute(this);
+        //new GetBudgetFromDb().execute(this);
         sharedPref = getPreferences(Context.MODE_PRIVATE);
         currentFragment = AccountsFragment.newInstance();
-        fillBudgetConst();
         BottomBar bottomBar = (BottomBar) findViewById(R.id.bottomBar);
         bottomBar.setOnTabSelectListener(new OnTabSelectListener() {
             @Override
@@ -105,15 +103,16 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                     //setBarTitle();
                 }
                 if (tabId == R.id.tab_budget) {
+                    getSupportActionBar().setTitle("Budget");
                     currentTabIndex = 1;
                     budgetFragment = BudgetFragment.newInstance();
                     getSupportFragmentManager().beginTransaction().replace(R.id.frag_container, budgetFragment).commit();
                     Log.d("Frag", "Budget");
                 }
-                if (tabId == R.id.tab_charts) {
-                    currentTabIndex = 2;
-
-                }
+//                if (tabId == R.id.tab_charts) {
+//                    currentTabIndex = 2;
+//
+//                }
                 if (tabId == R.id.tab_settings) {
                     currentTabIndex = 3;
                     getSupportActionBar().setTitle("Settings");
@@ -175,8 +174,30 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.new_transaction) {
-            newTransactionFragment = NewTransactionFragment.newInstance(-1, currentAccount);
-            getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newTransactionFragment).addToBackStack(null).commit();
+            if (accountList.isEmpty()) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("No accounts!");
+                builder.setMessage("Create new one?");
+                builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        newAccountFragment = NewAccountFragment.newInstance(-1);
+                        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+                        transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newAccountFragment).addToBackStack(null).commit();
+                        Log.d("Frag", "Replaced");
+                    }
+                });
+                builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                });
+                builder.create().show();
+            } else {
+                newTransactionFragment = NewTransactionFragment.newInstance(-1, currentAccount);
+                getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newTransactionFragment).addToBackStack(null).commit();
+            }
         }
         if (item.getItemId() == R.id.edit_accounts) {
             editMode = true;
@@ -227,6 +248,11 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                     editor.putInt(getString(R.string.default_account), ++defaultAccount);
                     editor.apply();
                     accountList.add(0, newAccountFragment.getNewAccount());
+                    for (Transaction tr :
+                            transactionList) {
+                        tr.increaseAccountId(1);
+                    }
+                    new SaveTransactionsToDb().execute(this);
                 }
                 if (currentFragment instanceof AccountsFragment) {
                     currentFragment = AccountsFragment.newInstance();
@@ -273,10 +299,44 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
             Log.d("Frag", "Replaced");
         }
         if (item.getItemId() == R.id.new_budget) {
-            getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, new NewBudgetSetupFragment()).addToBackStack(null).commit();
+            budgetToEdit = -1;
+            newBudgetSetupFragment = new NewBudgetSetupFragment();
+            getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newBudgetSetupFragment).addToBackStack(null).commit();
         }
         if (item.getItemId() == R.id.add_budget_option) {
-            getSupportFragmentManager().popBackStack();
+            Budget createdBudget = newBudgetSetupFragment.getNewBudget();
+            if (createdBudget == null) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("You have to fill budget value!");
+                builder.setPositiveButton("OK", null);
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        getSupportFragmentManager().popBackStack();
+                        View view = getWindow().getCurrentFocus();
+                        if (view != null) {
+                            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                        }
+                    }
+                });
+                builder.create().show();
+            } else {
+                if (budgetToEdit != -1) {//if existing account was edited
+                    budgetList.set(budgetToEdit, createdBudget);
+                    budgetToEdit = -1;
+                } else {
+                    budgetList.add(0, createdBudget);
+                }
+                Log.d("Created budget", String.valueOf(createdBudget.getValue()));
+                new SaveBudgetToDb().execute(this);
+                getSupportFragmentManager().popBackStack();
+                View view = this.getCurrentFocus();
+                if (view != null) {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+            }
         }
         return super.onOptionsItemSelected(item);
     }
@@ -463,6 +523,107 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
         }
     }
 
+    private class GetBudgetFromDb extends AsyncTask<Context, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Context... params) {
+            try {
+                budgetList = new ArrayList<>();
+                DbHelper helper = new DbHelper(params[0]);
+                SQLiteDatabase db = helper.getWritableDatabase();
+                Cursor cursor = db.query("BUDGET_SETUPS", new String[]{"CATEGORY_ID", "VALUE", "PERIOD"}, null, null, null, null, null);
+                while (cursor.moveToNext()) {
+                    try {
+                        budgetList.add(new Budget(cursor.getInt(0), Double.parseDouble(cursor.getString(1)), cursor.getInt(2)));
+                        Log.d("Parsed", cursor.getString(1));
+                    } catch (IllegalFormatException ex) {
+                        throw new IllegalArgumentException();
+                    }
+                }
+                cursor.close();
+                db.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    public class SaveBudgetToDb extends AsyncTask<Context, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Context... params) {
+            try {
+                DbHelper helper = new DbHelper(params[0]);
+                SQLiteDatabase db = helper.getWritableDatabase();
+                db.execSQL("delete from " + "BUDGET_SETUPS");
+                for (int i = 0; i < budgetList.size(); i++) {
+                    DbHelper.insertBudget(db, budgetList.get(i).getCategoryId(), String.valueOf(budgetList.get(i).getValue()), budgetList.get(i).getPeriod());
+                    Log.d("Saved to db", String.valueOf(budgetList.get(i).getValue()));
+                }
+                db.close();
+                Log.d("Main act", "Budget inserted!!!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    public void editBudget(int position) {
+        //TODO add this method
+        budgetToEdit = position;
+        newBudgetSetupFragment = new NewBudgetSetupFragment();
+        newBudgetSetupFragment.setBudgetToEdit(position);
+        getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, newBudgetSetupFragment).addToBackStack(null).commit();
+    }
+
+    public void removeBudget(int position) {
+        budgetList.remove(position);
+        new SaveBudgetToDb().execute(this);
+    }
+
+    public void showBudgetTransactions(int position) {
+        ArrayList<Transaction> list = new ArrayList<>();
+        Calendar cal = Calendar.getInstance();
+        switch (budgetList.get(position).getPeriod()) {
+            case 0: {
+                cal = Calendar.getInstance();
+                cal.set(Calendar.HOUR_OF_DAY, 0); // ! clear would not reset the hour of day !
+                cal.clear(Calendar.MINUTE);
+                cal.clear(Calendar.SECOND);
+                cal.clear(Calendar.MILLISECOND);
+                cal.set(Calendar.DAY_OF_WEEK, cal.getFirstDayOfWeek());
+                break;
+            }
+            case 1: {
+                cal = Calendar.getInstance();
+                cal.set(Calendar.HOUR_OF_DAY, 0); // ! clear would not reset the hour of day !
+                cal.clear(Calendar.MINUTE);
+                cal.clear(Calendar.SECOND);
+                cal.clear(Calendar.MILLISECOND);
+                cal.set(Calendar.DAY_OF_MONTH, 1);
+            }
+            case 2: {
+                cal = Calendar.getInstance();
+                cal.set(Calendar.HOUR_OF_DAY, 0); // ! clear would not reset the hour of day !
+                cal.clear(Calendar.MINUTE);
+                cal.clear(Calendar.SECOND);
+                cal.clear(Calendar.MILLISECOND);
+                cal.set(Calendar.DAY_OF_YEAR, 1);
+            }
+        }
+        for (Transaction tr :
+                transactionList) {
+            if (tr.getCategory() == budgetList.get(position).getCategoryId() && tr.getDate().compareTo(cal.getTime()) > 0)
+                list.add(tr);
+
+        }
+        TransactionsFragment transactionsFragment = TransactionsFragment.newInstance(-1);
+        transactionsFragment.setTransactions(list);
+        getSupportFragmentManager().beginTransaction().setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).replace(R.id.frag_container, transactionsFragment).addToBackStack(null).commit();
+    }
+
     private class GetTransactionsFromDb extends AsyncTask<Context, Void, Void> {
 
         @Override
@@ -471,11 +632,9 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                 long startTime = System.currentTimeMillis();
                 transactionList = new ArrayList<>();
                 categoryList = new ArrayList<>();
+                budgetList = new ArrayList<>();
                 DbHelper helper = new DbHelper(params[0]);
                 SQLiteDatabase db = helper.getWritableDatabase();
-//                DbHelper.insertCategory(db, "Zalupa");
-//                DbHelper.insertCategory(db, "Profit");
-//                Log.d("Categories", "Inserted");
                 Cursor cursor = db.query("TRANSACTIONS", new String[]{"ACCOUNT_ID", "NAME", "CATEGORY_ID", "DATE", "VALUE"}, null, null, null, null, null);
                 while (cursor.moveToNext()) {
                     try {
@@ -490,6 +649,15 @@ public class MainActivity extends AppCompatActivity implements AccountsFragment.
                         categoryList.add(cursor.getString(0));
                     } catch (Exception ex) {
                         ex.printStackTrace();
+                    }
+                }
+                cursor = db.query("BUDGET_SETUPS", new String[]{"CATEGORY_ID", "VALUE", "PERIOD"}, null, null, null, null, null);
+                while (cursor.moveToNext()) {
+                    try {
+                        budgetList.add(new Budget(cursor.getInt(0), Double.parseDouble(cursor.getString(1)), cursor.getInt(2)));
+                        Log.d("Parsed", cursor.getString(1));
+                    } catch (IllegalFormatException ex) {
+                        throw new IllegalArgumentException();
                     }
                 }
                 cursor.close();
